@@ -14,7 +14,7 @@ install.packages("acs", repos = "http://cran.us.r-project.org")
 library(acs)
 ```
 
-```{r api_key include=FALSE}
+```{r api_key, include=FALSE}
 source('acs_api_key.R')
 ```
 
