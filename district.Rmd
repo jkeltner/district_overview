@@ -1,0 +1,155 @@
+---
+output: html_document
+params:
+  state: "CA"
+  district: 27
+  endyear: 2015
+  span: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+install.packages("acs", repos = "http://cran.us.r-project.org")
+library(acs)
+```
+
+```{r api_key include=FALSE}
+source('acs_api_key.R')
+```
+
+```{r define_functions}
+# Let's set up some geo objects to correlate to our district, state, and the whole country
+geo_district <- geo.make(state=params$state, congressional.district=params$district)
+geo_state <- geo.make(state=params$state)
+geo_national <- geo.make(us=1)
+
+# function to pull data out of the ACS tables
+get_data <- function(table_number) {
+  district_data <- estimate(acs.fetch(table.number=table_number, 
+                                 geography=geo_district,
+                                 endyear=params$endyear, 
+                                 span = params$span, 
+                                 col.names="pretty"))
+  state_data <- estimate(acs.fetch(table.number=table_number, 
+                                      geography=geo_state,
+                                      endyear=params$endyear, 
+                                      span = params$span, 
+                                      col.names="pretty"))
+  national_data <- estimate(acs.fetch(table.number=table_number, 
+                                      geography=geo_national,
+                                      endyear=params$endyear, 
+                                      span = params$span, 
+                                      col.names="pretty"))
+  total_data <- rbind(district_data, state_data, national_data)
+  return(total_data)
+}
+
+# function to graph data (to maintain consistency). Wants a matrix with 3 rows for national, state, and district data.
+graph<- function(data) {
+  barplot(data, beside=TRUE, col=c("dark blue", "light blue", "gray"))
+}
+
+# wrapper for our graph function that graphs proportions by row (to show percentages)
+graph_as_percentage <- function(data) {
+  graph(prop.table(data, 1)*100)
+}
+```
+
+
+# `r params$state` `r params$district` District Overview
+
+This report is automatically compiled from the Census Burea [American Community Survey](https://www.census.gov/programs-surveys/acs/). It is intended to provide basic demographic data for an individual congressional district. This report was complied based on the `r params$span` year span data ending in `r params$endyear`. Throughout this report there are graphs to show information about the district and comparing that data to state and national data. In all charts the district data is represented in dard blue, the state data in light blue, and the national data in gray.
+
+## Income
+```{r income_data}
+income_raw <- get_data(table_number="B19001")
+# combining data groups into chosen segements
+income_data = cbind(income_raw[,2]+income_raw[,3]+income_raw[,4]+income_raw[,5],
+                  income_raw[,6]+income_raw[,7]+income_raw[,8]+income_raw[,9]+income_raw[,10],
+                  income_raw[,11]+income_raw[,12],
+                  income_raw[,13],
+                  income_raw[,14],
+                  income_raw[,15],
+                  income_raw[,16],
+                  income_raw[,17])
+# adding column names based on data grouping above
+colnames(income_data) <- c("<$25K", "$25-50K", "$50-75K", "$75-100K", "$100-125K",
+                       "$125-150K", "$150-200K", ">$200K")
+
+graph_as_percentage(income_data)
+```
+
+
+## Ethnicity
+```{r ethnicity_data}
+ethnicity_raw = get_data(table_number="B02001")
+ethnicity_data = cbind(ethnicity_raw[,2], 
+                       ethnicity_raw[,3], 
+                       ethnicity_raw[,4], 
+                       ethnicity_raw[,5], 
+                       ethnicity_raw[,6], 
+                       ethnicity_raw[,7], 
+                       ethnicity_raw[,8])
+colnames(ethnicity_data) <- c("White", "Black", "Nat. Amer", "Asian", "Pac Island", "Other", "2+ races")
+graph_as_percentage(ethnicity_data)
+```
+
+## Age
+```{r age_data}
+age_raw = get_data(table_number="B01001")
+# adding together men and women and combining age groups
+age_data <- cbind(age_raw[,3]+age_raw[,4]+age_raw[,27]+age_raw[,28], #<10
+                 age_raw[,5]+age_raw[,6]+age_raw[,7]+age_raw[,29]+age_raw[,30]+age_raw[,31], #10-19
+                 age_raw[,8]+age_raw[,9]+age_raw[,10]+age_raw[,11]+age_raw[,32]+age_raw[,33]+age_raw[,34]+age_raw[,35], #20-29
+                 age_raw[,12]+age_raw[,13]+age_raw[,36]+age_raw[,37], #30-39
+                 age_raw[,14]+age_raw[,15]+age_raw[,38]+age_raw[,39], #40-49
+                 age_raw[,16]+age_raw[,17]+age_raw[,40]+age_raw[,41], #50-59
+                 age_raw[,18]+age_raw[,19]+age_raw[,20]+age_raw[,21]+age_raw[,22]+age_raw[,23]+age_raw[,24]+age_raw[,25]+
+                   +age_raw[,42]+age_raw[,43]+age_raw[,44]+age_raw[,45]+age_raw[,46]+age_raw[,47]+age_raw[,48]+age_raw[,49] #60+
+                 )
+# adding column names based on data grouping above
+colnames(age_data) <- c("Under 10", "10-19","20-29", "30-39", "40-49", "50-59", "60+")
+graph_as_percentage(age_data)
+```
+
+## Health Insurance
+```{r health_insurance_data}
+insurance_raw <- get_data(table_number="B27010")
+# have  to add up coverage by age groups to get totals
+insurance_data <- cbind(insurance_raw[,4]+insurance_raw[,20]+insurance_raw[,36]+insurance_raw[,53], # Employer
+                        insurance_raw[,5]+insurance_raw[,21]+insurance_raw[,37]+insurance_raw[,54],# Direct Purchase
+                        insurance_raw[,6]+insurance_raw[,22]+insurance_raw[,38]+insurance_raw[,55]+
+                          insurance_raw[,7]+insurance_raw[,23]+insurance_raw[,39], # Medicare/Medicaid
+                        insurance_raw[,8]+insurance_raw[,24]+insurance_raw[,40]+insurance_raw[,56]+
+                            insurance_raw[,9]+insurance_raw[,25]+insurance_raw[,41]+insurance_raw[,57], # VA/Military
+                        insurance_raw[,10]+insurance_raw[,26]+insurance_raw[,42]+insurance_raw[,58]) # multiple kinds
+              
+# setting columns names for data above
+colnames(insurance_data) <- c('Employer', 'Individual', 'Medicaxx', "VA/Military", "Multiple")
+graph_as_percentage(insurance_data)
+```
+
+## Employment
+Note: this evaluates all individuals over 16 years of age.
+```{r employment_data}
+employment_raw <- get_data(table_number="B23025")
+employment_data <- cbind(employment_raw[,4], #employed,
+                         employment_raw[,6], #armed forces
+                         employment_raw[,5], #unemployed
+                         employment_raw[,7]) # not in labor force
+colnames(employment_data) <- c("Employed", "Military", "Unemployed", "Out of LF")
+graph_as_percentage(employment_data)
+```
+
+## Other data types to add...
+- Occupation
+- Industry
+- Home value histogram
+- Rent histogram
+- Homeowner vacancy
+- Rental vacancy
+- Educational Attainment
+- Employment by Industry
+- Payroll by Industry
+- Businesses by Industry

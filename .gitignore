@@ -1,0 +1,8 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+acs_api_key.R
+*.pdf
+*.html
+district_files/
