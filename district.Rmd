@@ -141,15 +141,3 @@ employment_data <- cbind(employment_raw[,4], #employed,
 colnames(employment_data) <- c("Employed", "Military", "Unemployed", "Out of LF")
 graph_as_percentage(employment_data)
 ```
-
-## Other data types to add...
-- Occupation
-- Industry
-- Home value histogram
-- Rent histogram
-- Homeowner vacancy
-- Rental vacancy
-- Educational Attainment
-- Employment by Industry
-- Payroll by Industry
-- Businesses by Industry
